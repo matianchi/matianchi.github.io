@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="http://annotorious.github.com/latest/annotorious.css" />
+    <script src=" http://annotorious.github.com/latest/annotorious.min.js"></script>
+    <script src="FileSaver.js/FileSaver.js"></script>
+    <script>
+
+    var imageFile = "";    
+
+    var openFile = function(event) {
+        var input = event.target;
+        var reader = new FileReader();
+        reader.onload = function(){
+            var dataURL = reader.result;
+            var output = document.getElementById('mainImage');
+            output.src = dataURL;
+            setTimeout(function(){
+                anno.reset();
+            }, 100);
+        };
+        imageFile = input.files[0];
+        reader.readAsDataURL(input.files[0]);
+    };
+
+    var generateAnnotatedImage = function() {
+        var annoList = anno.getAnnotations();
+        //if (annoList.length == 0) return;
+        // copy object (for safety)
+        annoList = JSON.parse(JSON.stringify(annoList));
+        var width = document.getElementById("mainImage").width; 
+        var height = document.getElementById("mainImage").height; 
+        // make all annotations have pixel coordinates
+        var image = {};
+        image.width = width;
+        image.height = height;
+        image.annotations = [];
+
+        for (var ind = 0; ind < annoList.length; ind++){
+            var curAnno = annoList[ind];
+            var curGeom = curAnno.shapes[0].geometry;
+                        // means not using pixel coordinates
+            if (curGeom.height < 1 || curGeom.width < 1){
+                curGeom.height = Math.round(curGeom.height * height);
+                curGeom.width = Math.round(curGeom.width * width);
+                curGeom.x = Math.round(curGeom.x * width);
+                curGeom.y = Math.round(curGeom.y * height);
+            }
+
+            image.annotations.push(curGeom);
+        }
+        return image;
+    }
+
+    var save = function(event) {
+        var image = generateAnnotatedImage();
+        var blob = new Blob([JSON.stringify(image, null, '  ')], {type: "text/plain;charset=utf-8"});
+        var imageFilename = imageFile.name;
+        var jsonFilename = imageFilename.slice(0, -4) + '.json'        
+        saveAs(blob, jsonFilename);
+    }
+
+    // prints 
+    function showBoxes(){
+        var myNode = document.getElementById("myList");
+        while (myNode.firstChild) {
+            myNode.removeChild(myNode.firstChild);
+        }
+        var image = generateAnnotatedImage();            
+        var node = document.createElement("PRE");
+        var textNode = document.createTextNode(JSON.stringify(image, null, '  '));
+        node.appendChild(textNode);
+        document.getElementById("myList").appendChild(node);
+    }
+    </script>
+    <meta charset=utf-8 />
+    <title>Find Faces</title>
+    <!--[if IE]>
+    <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <style>
+        article, aside, figure, footer, header, hgroup, 
+        menu, nav, section { display: block; }
+    </style>
+</head>
+<body>
+<br>
+    <input type='file' accept='image/*' onchange='openFile(event)' />
+    <div>
+        <button type="button" onclick="showBoxes()">Show</button>
+        <button type="button" onclick="save()">Save</button>
+    </div>
+    <br>
+        
+        <div>Select image, click and drag to select boxes, then click on 'Show Boxes' button. JSON representing this image and
+        its annotations will be produced when you press Show.</div>
+        <ul id="myList">
+        </ul>
+    </br>
+    <div >
+        <img class="annotatable" id="mainImage" src="#" alt="your image" />
+    </div>
+
+</body>
+</html>
